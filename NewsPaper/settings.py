@@ -28,6 +28,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
 
 # Application definition
 
@@ -39,10 +43,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'News',
+    'News.apps.NewsConfig',
     'django.contrib.sites',
     'django.contrib.flatpages',
     'django_filters',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.yandex',
+    'django_apscheduler',
 ]
 
 SITE_ID = 1
@@ -55,6 +65,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    'django.contrib.flatpages.middleware.FlatpageFallbackMiddleware',
+
 ]
 
 ROOT_URLCONF = 'NewsPaper.urls'
@@ -133,3 +146,143 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATICFILES_DIRS = [
     BASE_DIR / "static"
 ]
+
+LOGIN_REDIRECT_URL = '/news'
+
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+
+ACCOUNT_FORMS = {"signup": "accounts.forms.CustomSignupForm"}
+
+SITE_URL = 'http://127.0.0.1:8000'
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.yandex.ru'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = 'lena-filippova-93@yandex.ru'
+EMAIL_HOST_PASSWORD ='Lena_93'
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+DEFAULT_FROM_EMAIL = 'lena-filippova-93@yandex.ru'
+
+
+
+CELERY_BROKER_URL = 'redis://default:b0gDNhqnQZKWIo8wZLRjk0fEaYMEEbbp@redis-14545.c266.us-east-1-3.ec2.cloud.redislabs.com:14545'
+CELERY_RESULT_BACKEND = 'redis://default:b0gDNhqnQZKWIo8wZLRjk0fEaYMEEbbp@redis-14545.c266.us-east-1-3.ec2.cloud.redislabs.com:14545'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'style': '{',
+    'formatters': {
+        'debug': {
+            'format': '%(asctime)s %(levelname)s %(pathname)s %(message)s' # время, уровень сообщения, сообщения
+        },
+        'warning': {
+            'format': '%(asctime)s %(levelname)s %(pathname)s %(message)s' # время, уровень сообщения, сообщения, путь к источнику события
+        },
+        'error_critical': {
+            'format': '%(asctime)s %(levelname)s %(message)s %(pathname)s %(exc_info)s' # время, уровень сообщения, сообщения, путь к источнику события, стэк ошибки
+        },
+        'general_security_log': {
+            'format': '%(asctime)s %(levelname)s %(module)s %(message)s' #времени, уровня логирования, модуля, в котором возникло сообщение (аргумент module) и само сообщение
+        },
+        'mail_log': {
+            'format': '%(asctime)s %(levelname)s %(pathname)s %(message)s'  # время, уровень логирования, путь к источнику события, сообщение
+        }
+    },
+
+
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue', #сообщения отправляются только при DEBUG = True
+        },
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse', #  на почту и в файл general.log — только при DEBUG = False
+        },
+    },
+
+
+    'handlers': { #В ключе handlers
+        'console_debug': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'debug'
+        },
+        'console_warning': {
+            'level': 'WARNING',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'warning'
+        },
+        'file_general': {
+            'level': 'INFO',
+            'filters': ['require_debug_false'],
+            'class': 'logging.FileHandler',
+            'filename': 'general.log',
+            'formatter': 'general_security_log'
+        },
+        'file_security': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'security.log',
+            'formatter': 'general_security_log'
+        },
+        'file_errors': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': 'errors.log',
+            'formatter': 'error_critical'
+        },
+        'file_critical': {
+            'level': 'CRITICAL',
+            'class': 'logging.FileHandler',
+            'filename': 'errors.log',
+            'formatter': 'error_critical'
+        },
+        'mail_admin': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler',
+            'formatter': 'mail_log'
+        }
+    },
+
+
+    'loggers': {
+        'django': {
+            'handlers': ['console_debug', 'console_warning', 'file_general'],
+            'propagate': True,
+        },
+        'django.request': {
+            'handlers': ['file_errors', 'file_critical', 'mail_admin'],
+            'propagate': True,
+        },
+        'django.server': {
+            'handlers': ['file_errors', 'file_critical', 'mail_admin'],
+            'propagate': True,
+        },
+        'django.template': {
+            'handlers': ['file_errors', 'file_critical'],
+            'propagate': True,
+        },
+        'django.db_backends': {
+            'handlers': ['file_errors', 'file_critical'],
+            'propagate': True,
+        },
+        'django.security': {
+            'handlers': ['file_security'],
+            'propagate': True,
+        },
+    }
+}
